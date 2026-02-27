@@ -1,4 +1,4 @@
-import { DataProvider, BaseRecord, GetListParams, GetListResponse } from "@refinedev/core";
+/* import { DataProvider, BaseRecord, GetListParams, GetListResponse } from "@refinedev/core";
 
 const mockSubjects = [
 	{
@@ -49,4 +49,44 @@ export const dataProvider: DataProvider = {
 		throw new Error("This function is not present in mock");
 	},
 	getApiUrl: () => "", // mock implementation
-};
+}; */
+import { BACKEND_BASE_URL } from "@/constants";
+import { ListResponse } from "@/types";
+import { CreateDataProviderOptions, createDataProvider } from "@refinedev/rest";
+
+const options:CreateDataProviderOptions ={
+	getList: {
+		getEndpoint: (resource) => resource.resource,
+		buildQueryParams :async({resource,pagination,filters}) => {
+			const page =pagination?.currentPage ?? 1;
+			const pageSize = pagination?.pageSize ?? 10;
+
+			const params:Record<string,string|number> = {page,limit:pageSize};
+
+			filters?.forEach((filter) => {
+				const field = 'field' in filter ? filter.field : '';
+				const value =String(filter.value);
+
+				if(resource === 'subjects') {
+					if(field === 'departement') params.departement = value;
+					if(field === 'name'|| field === 'code') params.search = value;
+				}
+		})
+		return params;
+	},
+
+
+
+		mapResponse: async (response) => {
+			const payload:ListResponse = await response.json();
+			return payload.data ?? [];
+	},
+	getTotalCount:async (response)=> {
+	const payload:ListResponse = await response.json();
+	return payload.pagination?.total ??payload.data?.length ?? 0;
+	}
+}
+}
+const { dataProvider } = createDataProvider(BACKEND_BASE_URL, options);
+
+export { dataProvider }
