@@ -9,6 +9,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "@refinedev/react-hook-form"
 import {  classSchema} from "@/lib/schema"
 import  * as z  from "zod"
+import { useEffect, useState } from "react";
 import {
     Form,
     FormControl,
@@ -18,13 +19,13 @@ import {
     FormLabel,
     FormMessage,
 } from "@/components/ui/form"
-import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {Textarea} from "@/components/ui/textarea.tsx";
 import {Loader2} from "lucide-react";
 import { Input } from "@/components/ui/input"
 import { Subject,User } from "@/types"
 import UploadWidget from "@/components/upload-widget"
+import { BACKEND_BASE_URL } from "@/constants";
 const ClassesCreate = () => {
   const back = useBack()  
 
@@ -35,29 +36,48 @@ const ClassesCreate = () => {
             action: "create",
         }
     });
-const {handleSubmit,formState:{isSubmitting,errors},control} =form
-   const onSubmit= (values: z.infer<typeof classSchema>)=> {
+const {handleSubmit,formState:{isSubmitting,errors},control, refineCore} =form
+const [teachers, setTeachers] = useState<User[]>([]);
+const [subjects, setSubjects] = useState<Subject[]>([]);
+
+useEffect(() => {
+    const controller = new AbortController();
+
+    const loadFormOptions = async () => {
+        try {
+            const [subjectsResponse, teachersResponse] = await Promise.all([
+                fetch(`${BACKEND_BASE_URL}/subjects?limit=100`, { signal: controller.signal }),
+                fetch(`${BACKEND_BASE_URL}/users?role=teacher&limit=100`, { signal: controller.signal }),
+            ]);
+
+            if (!subjectsResponse.ok || !teachersResponse.ok) {
+                throw new Error("Failed to load class form options.");
+            }
+
+            const subjectsPayload = await subjectsResponse.json();
+            const teachersPayload = await teachersResponse.json();
+
+            setSubjects(subjectsPayload.data ?? []);
+            setTeachers(teachersPayload.data ?? []);
+        } catch (error) {
+            if ((error as Error).name !== "AbortError") {
+                console.error("Error loading class form options:", error);
+            }
+        }
+    };
+
+    void loadFormOptions();
+
+    return () => controller.abort();
+}, []);
+
+   const onSubmit= async (values: z.infer<typeof classSchema>)=> {
             try {
-                console.log("Form values:", values);
+                await refineCore.onFinish?.(values);
             } catch (error) {
                 console.error("Error creating class:", error);
-                
-                
             }
   }
- const teachers = [
-    { id: 1, name: "John Doe" },
-    { id: 2, name: "Jane Smith" },  
-    { id: 3, name: "Alice Johnson" },
-    { id: 4, name: "Bob Brown" },
-    { id: 5, name: "Emily Davis" },
-  ];
-  const subjects = [
-    { id: 1, name: "Mathematics",code:"MATH" },
-    { id: 2, name: "Physics",code:"PHYS" },
-    { id: 3, name: "Chemistry",code:"CHEM" },
-    { id: 4, name: "Biology",code:"BIO" },
-    { id: 5, name: "History",code:"HIST" },]
 const bannerPublicId = form.watch("bannerCldPubId")
 const setBannerImage = (file:any, field:any) => {
     if(file) {
