@@ -12,7 +12,7 @@ import { ColumnDef } from '@tanstack/react-table'
 
 import { Search } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
-
+//class list page
 const ClassesLists = () => {
   
   const [searchQuery,setSearchQuery] = useState('')
